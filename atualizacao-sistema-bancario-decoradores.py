@@ -6,10 +6,48 @@ from datetime import datetime, timezone
 def log_transacao(func):
     def envelope(*args, **kwargs):
         resultado = func(*args, **kwargs)
+        
         data_hora = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{data_hora}] Função '{func.__name__}' executada com argumentos {args} e {kwargs}")
+        
+        tipo_transacao = "Transação"
+        if func.__name__ == "depositar":
+            tipo_transacao = "Depósito"
+        elif func.__name__ == "sacar":
+            tipo_transacao = "Saque"
+        elif func.__name__ == "exibir_extrato":
+            tipo_transacao = "Extrato"
+        elif func.__name__ == "criar_cliente":
+            tipo_transacao = "Novo Cliente"
+        elif func.__name__ == "criar_conta":
+            tipo_transacao = "Nova Conta"
+        
+        print(f"[{data_hora}] {tipo_transacao} realizado(a)")
+        
         return resultado
     return envelope
+
+
+class ContasIterador:
+    def __init__(self, contas):
+        self.contas = contas
+        self._index = 0
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        try:
+            conta = self.contas[self._index]
+            return f"""\
+            Agência:\t{conta.agencia}
+            Número:\t\t{conta.numero}
+            Titular:\t{conta.cliente.nome}
+            Saldo:\t\tR$ {conta.saldo:.2f}
+            """
+        except IndexError:
+            raise StopIteration
+        finally:
+            self._index += 1
 
 
 class Transacao(ABC):
@@ -197,13 +235,13 @@ class ContaCorrente(Conta):
 def menu():
     menu = """\n
     ========================= MENU =========================
-    [d] \tDepositar
-    [s] \tSacar
-    [e] \tExtrato
-    [nc] \tNova Conta
-    [lc] \tListar Contas
-    [nu] \tNovo Usuário
-    [q] \tSair
+    [d]\tDepositar
+    [s]\tSacar
+    [e]\tExtrato
+    [nc]\tNova Conta
+    [lc]\tListar Contas
+    [nu]\tNovo Usuário
+    [q]\tSair
     => """
     return input(textwrap.dedent(menu))
 
@@ -218,7 +256,6 @@ def recuperar_conta_cliente(cliente):
         print("\n@@@ Cliente não possui conta! @@@")
         return
     
-    # FIXME: não permite cliente escolher a conta
     return cliente.contas[0]
 
 
@@ -325,9 +362,9 @@ def criar_conta(numero_conta, clientes, contas):
 
 
 def listar_contas(contas):
-    for conta in contas:
+    for conta in ContasIterador(contas):
         print("=" * 100)
-        print(textwrap.dedent(str(conta)))
+        print(textwrap.dedent(conta))
 
 
 def main():
